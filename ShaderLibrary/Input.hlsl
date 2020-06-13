@@ -7,7 +7,7 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/ShaderTypes.cs.hlsl"
 
-#if defined(SHADER_API_MOBILE) || (defined(SHADER_API_GLCORE) && !defined(SHADER_API_SWITCH)) || defined(SHADER_API_GLES) || defined(SHADER_API_GLES3) // Workaround for bug on Nintendo Switch where SHADER_API_GLCORE is mistakenly defined
+#if defined(SHADER_API_MOBILE) || defined(SHADER_API_GLCORE)
     #define MAX_VISIBLE_LIGHTS 32
 #else
     #define MAX_VISIBLE_LIGHTS 256
@@ -44,7 +44,6 @@ half4 _DrawObjectPassData;
 
 
 half4 _AdditionalLightsCount;
-
 #if USE_STRUCTURED_BUFFER_FOR_LIGHT_DATA
 StructuredBuffer<LightData> _AdditionalLightsBuffer;
 StructuredBuffer<int> _AdditionalLightsIndices;
@@ -76,13 +75,8 @@ CBUFFER_END
 #define UNITY_MATRIX_IT_MV transpose(mul(UNITY_MATRIX_I_M, UNITY_MATRIX_I_V))
 #define UNITY_MATRIX_MVP   mul(UNITY_MATRIX_VP, UNITY_MATRIX_M)
 
-// Note: #include order is important here.
-// UnityInput.hlsl must be included before UnityInstancing.hlsl, so constant buffer
-// declarations don't fail because of instancing macros.
-// UniversalDOTSInstancing.hlsl must be included after UnityInstancing.hlsl
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/UnityInput.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/UnityInstancing.hlsl"
-#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/UniversalDOTSInstancing.hlsl"
 #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/SpaceTransforms.hlsl"
 
 #endif

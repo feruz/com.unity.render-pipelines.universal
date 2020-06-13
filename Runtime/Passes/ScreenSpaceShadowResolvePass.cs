@@ -1,5 +1,4 @@
 using System;
-using UnityEngine.Experimental.Rendering;
 
 namespace UnityEngine.Rendering.Universal.Internal
 {
@@ -25,9 +24,9 @@ namespace UnityEngine.Rendering.Universal.Internal
             m_RenderTextureDescriptor = baseDescriptor;
             m_RenderTextureDescriptor.depthBufferBits = 0;
             m_RenderTextureDescriptor.msaaSamples = 1;
-            m_RenderTextureDescriptor.graphicsFormat = RenderingUtils.SupportsGraphicsFormat(GraphicsFormat.R8_UNorm, FormatUsage.Linear | FormatUsage.Render)
-                ? GraphicsFormat.R8_UNorm
-                : GraphicsFormat.B8G8R8A8_UNorm;
+            m_RenderTextureDescriptor.colorFormat = RenderingUtils.SupportsRenderTextureFormat(RenderTextureFormat.R8)
+                ? RenderTextureFormat.R8
+                : RenderTextureFormat.ARGB32;
         }
 
         public override void Configure(CommandBuffer cmd, RenderTextureDescriptor cameraTextureDescriptor)
@@ -52,9 +51,10 @@ namespace UnityEngine.Rendering.Universal.Internal
                 return;
 
             Camera camera = renderingData.cameraData.camera;
+            bool stereo = renderingData.cameraData.isStereoEnabled;
 
             CommandBuffer cmd = CommandBufferPool.Get(m_ProfilerTag);
-            if (!renderingData.cameraData.xr.enabled)
+            if (!stereo)
             {
                 cmd.SetViewProjectionMatrices(Matrix4x4.identity, Matrix4x4.identity);
                 cmd.DrawMesh(RenderingUtils.fullscreenMesh, Matrix4x4.identity, m_ScreenSpaceShadowsMaterial);
@@ -72,7 +72,7 @@ namespace UnityEngine.Rendering.Universal.Internal
         }
 
         /// <inheritdoc/>
-        public override void OnCameraCleanup(CommandBuffer cmd)
+        public override void FrameCleanup(CommandBuffer cmd)
         {
             if (cmd == null)
                 throw new ArgumentNullException("cmd");

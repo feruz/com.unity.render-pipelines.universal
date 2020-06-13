@@ -1,5 +1,4 @@
 * [Universal Render Pipeline](index.md)
-* [Requirements](requirements)
 * [Features]()
   * [Feature Comparison with the Built-in Render Pipeline](universalrp-builtin-feature-comparison.md)
 * [Getting started](InstallingAndConfiguringURP.md)
@@ -62,9 +61,6 @@
   * [Upgrading shaders from Built-in](upgrading-your-shaders.md)
   * [Shader stripping](shader-stripping.md)
 
-* [Customizing URP](customizing-urp.md)
-  * [beginCameraRendering event](using-begincamerarendering.md)
-
 * [2D](2d-index.md)
   * [Introduction to Lights 2D](Lights-2D-intro.md)
   * [Requirements and setup](Setup.md)
@@ -73,12 +69,12 @@
   * [Lights 2D properties](2DLightProperties.md)
 
     * [Light types](LightTypes.md)
-  * [2D Shadows](2DShadows.md)
   * [Configuring the 2D Renderer Asset](2DRendererData_overview.md)
 
     * [HDR emulation scale](HDREmulationScale.md)
     * [Light Blend Styles](LightBlendStyles.md)
     
+    * [2D Shadows](2DShadows.md)
   * [2D Renderer and Shader Graph](ShaderGraph.md)
   * [2D Pixel Perfect](2d-pixelperfect.md)
     * [Cinemachine Pixel Perfect extension](pixel-cinemachine.md)
