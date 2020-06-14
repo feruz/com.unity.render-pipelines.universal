@@ -1,10 +1,12 @@
-﻿using System.IO;
+using System;
+using System.IO;
 using UnityEngine;
 using UnityEditor.AssetImporters;
 
 namespace UnityEditor.Rendering.Universal
 {
-    class SketchupMaterialDescriptionPreprocessor : AssetPostprocessor
+    [Obsolete("SketchupMaterialDescriptionPreprocessor is deprecated, consider creating a new AsserPostProcessor rather than overriding it.")]
+    public class SketchupMaterialDescriptionPreprocessor : AssetPostprocessor
     {
         static readonly uint k_Version = 1;
         static readonly int k_Order = 2;

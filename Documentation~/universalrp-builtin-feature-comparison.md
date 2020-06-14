@@ -122,7 +122,7 @@ This table provides an overview of the current features supported in the Univers
 | UniversalRenderPipeline.RenderSingleCamera                   | Not supported                                                | Yes                                                          |
 | ScriptableRenderPass                                         | Not supported                                                | Yes                                                          |
 | Custom Renderers                                             | Not supported                                                | Yes                                                          |
-| ***Post-processing***                                        | Uses Post-Processing Version 2 package                      | Uses integrated [post-processing solution](integration-with-post-processing.md) |
+| ***Post-processing***                                        | Uses Post-Processing Version 2 package                      | Uses integrated [post-processing solution](integration-with-post-processing.md), supports PPV2 package for backwards compatibility with existing Projects |
 | Ambient Occlusion (MSVO)                                     | Yes                                                          | In research                                                  |
 | Auto Exposure                                                | Yes                                                          | Not supported                                                          |
 | Bloom                                                        | Yes                                                          | Yes                                                          |
@@ -159,10 +159,10 @@ This table provides an overview of the current features supported in the Univers
 | World Space                                                  | Yes                                                          | Yes                                                          |
 | Text Mesh Pro                                                | Yes                                                          | Yes                                                          |
 | ***VR***                                                     |                                                              |                                                              |
-| Mutipass                                                     | Yes                                                          | In research                                                  |
+| Multipass                                                     | Yes                                                          | Yes                                                  |
 | Single Pass                                                  | Yes                                                          | Yes                                                          |
 | Single Pass Instanced                                        | Yes                                                          | Yes                                                          |
-| *Post-processing*<br>Oculus Rift<br/>Oculus Quest</br>Oculus Go<br/>Gear VR<br/>PSVR</br>HoloLens<br/>WMR<br/>Magic Leap One| <br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes | <br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes |
+| *Post-processing*<br>Oculus Rift<br/>Oculus Quest</br>Oculus Go<br/>Gear VR<br/>PSVR</br>HoloLens<br/>WMR<br/>Magic Leap One<br/>OpenVR| <br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes | <br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>Yes<br/>No |
 | ***AR***                                                     |                                                              |                                                              |
 | AR Foundation                                                   | No                                                          | Yes                                                          |
 | ***Debug***                                                  |                                                              |                                                              |

@@ -5,7 +5,7 @@ Shader "Universal Render Pipeline/Simple Lit"
     Properties
     {
         [MainTexture] _BaseColor("Base Color", Color) = (1, 1, 1, 1)
-        [MainColor]   _BaseMap("Base Map (RGB) Smoothness / Alpha (A)", 2D) = "white" {}
+        [MainColor] _BaseMap("Base Map (RGB) Smoothness / Alpha (A)", 2D) = "white" {}
 
         _Cutoff("Alpha Clipping", Range(0.0, 1.0)) = 0.5
 

@@ -4,6 +4,7 @@ using Unity.Collections;
 using UnityEngine.Scripting.APIUpdating;
 
 using UnityEngine.Experimental.GlobalIllumination;
+using UnityEngine.Experimental.Rendering;
 using Lightmapping = UnityEngine.Experimental.GlobalIllumination.Lightmapping;
 
 namespace UnityEngine.Rendering.Universal
@@ -24,6 +25,8 @@ namespace UnityEngine.Rendering.Universal
         public PostProcessingData postProcessingData;
         public bool supportsDynamicBatching;
         public PerObjectData perObjectData;
+        [Obsolete("killAlphaInFinalBlit is deprecated in the Universal Render Pipeline since it is no longer needed on any supported platform.")]
+        public bool killAlphaInFinalBlit;
 
         /// <summary>
         /// True if post-processing effect is enabled while rendering the camera stack.
@@ -74,7 +77,7 @@ namespace UnityEngine.Rendering.Universal
 
         /// <summary>
         /// Returns the camera GPU projection matrix. This contains platform specific changes to handle y-flip and reverse z.
-        /// Similar to <c>GL.GetGPUProjectionMatrix</c> but queries URP internal state to know if the pipeline is rendering to render texture. 
+        /// Similar to <c>GL.GetGPUProjectionMatrix</c> but queries URP internal state to know if the pipeline is rendering to render texture.
         /// For more info on platform differences regarding camera projection check: https://docs.unity3d.com/Manual/SL-PlatformDifferences.html
         /// </summary>
         /// <seealso cref="GL.GetGPUProjectionMatrix(Matrix4x4, bool)"/>
@@ -94,11 +97,21 @@ namespace UnityEngine.Rendering.Universal
         internal float aspectRatio;
         public float renderScale;
         public bool clearDepth;
-        public bool isSceneViewCamera;
+        public CameraType cameraType;
         public bool isDefaultViewport;
         public bool isHdrEnabled;
         public bool requiresDepthTexture;
         public bool requiresOpaqueTexture;
+
+        /// <summary>
+        /// True if the camera rendering is for the scene window in the editor
+        /// </summary>
+        public bool isSceneViewCamera;
+
+        /// <summary>
+        /// True if the camera rendering is for the preview window in the editor
+        /// </summary>
+        public bool isPreviewCamera => cameraType == CameraType.Preview;
 
         /// <summary>
         /// True if the camera device projection matrix is flipped. This happens when the pipeline is rendering
@@ -129,6 +142,11 @@ namespace UnityEngine.Rendering.Universal
 
         public float maxShadowDistance;
         public bool postProcessEnabled;
+
+#if POST_PROCESSING_STACK_2_0_0_OR_NEWER
+        [Obsolete("The use of the Post-processing Stack V2 is deprecated in the Universal Render Pipeline. Use the builtin post-processing effects instead.")]
+        public UnityEngine.Rendering.PostProcessing.PostProcessLayer postProcessLayer;
+#endif
 
         public IEnumerator<Action<RenderTargetIdentifier, CommandBuffer>> captureActions;
 
@@ -164,7 +182,7 @@ namespace UnityEngine.Rendering.Universal
         public List<Vector4> bias;
     }
 
-    public static class ShaderPropertyId
+    internal static class ShaderPropertyId
     {
         public static readonly int scaledScreenParams = Shader.PropertyToID("_ScaledScreenParams");
         public static readonly int worldSpaceCameraPos = Shader.PropertyToID("_WorldSpaceCameraPos");
@@ -178,7 +196,7 @@ namespace UnityEngine.Rendering.Universal
         public static readonly int viewAndProjectionMatrix = Shader.PropertyToID("unity_MatrixVP");
 
         public static readonly int inverseViewMatrix = Shader.PropertyToID("unity_MatrixInvV");
-        // Undefined: 
+        // Undefined:
         // public static readonly int inverseProjectionMatrix = Shader.PropertyToID("unity_MatrixInvP");
         public static readonly int inverseViewAndProjectionMatrix = Shader.PropertyToID("unity_MatrixInvVP");
 
@@ -192,14 +210,6 @@ namespace UnityEngine.Rendering.Universal
     {
         public ColorGradingMode gradingMode;
         public int lutSize;
-    }
-
-    class CameraDataComparer : IComparer<Camera>
-    {
-        public int Compare(Camera lhs, Camera rhs)
-        {
-            return (int)lhs.depth - (int)rhs.depth;
-        }
     }
 
     public static class ShaderKeywordStrings
@@ -218,6 +228,8 @@ namespace UnityEngine.Rendering.Universal
         public static readonly string DepthMsaa8 = "_DEPTH_MSAA_8";
 
         public static readonly string LinearToSRGBConversion = "_LINEAR_TO_SRGB_CONVERSION";
+        [Obsolete("The _KILL_ALPHA shader keyword is deprecated in the Universal Render Pipeline.")]
+        public static readonly string KillAlpha = "_KILL_ALPHA";
 
         public static readonly string SmaaLow = "_SMAA_PRESET_LOW";
         public static readonly string SmaaMedium = "_SMAA_PRESET_MEDIUM";
@@ -296,24 +308,64 @@ namespace UnityEngine.Rendering.Universal
                 throw new ArgumentNullException("camera");
 
 #if ENABLE_VR && ENABLE_VR_MODULE
-            return IsStereoEnabled(camera) && XR.XRSettings.stereoRenderingMode == XR.XRSettings.StereoRenderingMode.MultiPass;
+            return IsStereoEnabled(camera) && !CanXRSDKUseSinglePass(camera) && XR.XRSettings.stereoRenderingMode == XR.XRSettings.StereoRenderingMode.MultiPass;
 #else
             return false;
 #endif
         }
 
-        void SortCameras(Camera[] cameras)
+#if ENABLE_VR && ENABLE_VR_MODULE
+        static XR.XRDisplaySubsystem GetXRDisplaySubsystem()
         {
-            if (cameras.Length <= 1)
-                return;
-            Array.Sort(cameras, new CameraDataComparer());
+            XR.XRDisplaySubsystem display = null;
+            SubsystemManager.GetInstances(displaySubsystemList);
+
+            if (displaySubsystemList.Count > 0)
+                display = displaySubsystemList[0];
+
+            return display;
+        }
+
+        // NB: This method is required for a hotfix in Hololens to prevent creating a render texture when using a renderer
+        // with custom render pass.
+        // TODO: Remove this method and usages when we have proper dependency tracking in the pipeline to know
+        // when a render pass requires camera color as input.
+        internal static bool IsRunningHololens(Camera camera)
+        {
+#if PLATFORM_WINRT
+            if (IsStereoEnabled(camera))
+            {
+                var platform = Application.platform;
+                if (platform == RuntimePlatform.WSAPlayerX86 || platform == RuntimePlatform.WSAPlayerARM)
+                {
+                    var displaySubsystem = GetXRDisplaySubsystem();
+                    var subsystemDescriptor = displaySubsystem?.SubsystemDescriptor ?? null;
+                    string id = subsystemDescriptor?.id ?? "";
+
+                    if (id.Contains("Windows Mixed Reality Display"))
+                        return true;
+
+                    if (!XR.WSA.HolographicSettings.IsDisplayOpaque)
+                        return true;
+                }
+            }
+#endif
+            return false;
+        }
+#endif
+
+        Comparison<Camera> cameraComparison = (camera1, camera2) => { return (int) camera1.depth - (int) camera2.depth; };
+		void SortCameras(Camera[] cameras)
+        {
+            if (cameras.Length > 1)
+                Array.Sort(cameras, cameraComparison);
         }
 
         static RenderTextureDescriptor CreateRenderTextureDescriptor(Camera camera, float renderScale,
             bool isStereoEnabled, bool isHdrEnabled, int msaaSamples, bool needsAlpha)
         {
             RenderTextureDescriptor desc;
-            RenderTextureFormat renderTextureFormatDefault = RenderTextureFormat.Default;
+            GraphicsFormat renderTextureFormatDefault = SystemInfo.GetGraphicsFormat(DefaultFormat.LDR);
 
             // NB: There's a weird case about XR and render texture
             // In test framework currently we render stereo tests to target texture
@@ -322,7 +374,7 @@ namespace UnityEngine.Rendering.Universal
             if (isStereoEnabled)
             {
                 desc = XRGraphics.eyeTextureDesc;
-                renderTextureFormatDefault = desc.colorFormat;
+                renderTextureFormatDefault = desc.graphicsFormat;
             }
             else if (camera.targetTexture == null)
             {
@@ -344,10 +396,15 @@ namespace UnityEngine.Rendering.Universal
             }
             else
             {
-                bool use32BitHDR = !needsAlpha && RenderingUtils.SupportsRenderTextureFormat(RenderTextureFormat.RGB111110Float);
-                RenderTextureFormat hdrFormat = (use32BitHDR) ? RenderTextureFormat.RGB111110Float : RenderTextureFormat.DefaultHDR;
-            
-                desc.colorFormat = isHdrEnabled ? hdrFormat : renderTextureFormatDefault;
+                GraphicsFormat hdrFormat;
+                if (!needsAlpha && RenderingUtils.SupportsGraphicsFormat(GraphicsFormat.B10G11R11_UFloatPack32, FormatUsage.Linear | FormatUsage.Render))
+                    hdrFormat = GraphicsFormat.B10G11R11_UFloatPack32;
+                else if (RenderingUtils.SupportsGraphicsFormat(GraphicsFormat.R16G16B16A16_SFloat, FormatUsage.Linear | FormatUsage.Render))
+                    hdrFormat = GraphicsFormat.R16G16B16A16_SFloat;
+                else
+                    hdrFormat = SystemInfo.GetGraphicsFormat(DefaultFormat.HDR); // This might actually be a LDR format on old devices.
+
+                desc.graphicsFormat = isHdrEnabled ? hdrFormat : renderTextureFormatDefault;
                 desc.depthBufferBits = 32;
                 desc.msaaSamples = msaaSamples;
                 desc.sRGB = (QualitySettings.activeColorSpace == ColorSpace.Linear);
@@ -416,6 +473,7 @@ namespace UnityEngine.Rendering.Universal
                 lightData.InitNoBake(light.GetInstanceID());
                 lightsOutput[i] = lightData;
             }
+            Debug.LogWarning("Realtime GI is not supported in Universal Pipeline.");
 #endif
         };
     }

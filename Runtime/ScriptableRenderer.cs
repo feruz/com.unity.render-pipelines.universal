@@ -66,18 +66,15 @@ namespace UnityEngine.Rendering.Universal
             // for now using cmd.SetViewProjecionMatrices
             //SetViewAndProjectionMatrices(cmd, viewMatrix, cameraData.GetDeviceProjectionMatrix(), setInverseMatrices);
             cmd.SetViewProjectionMatrices(viewMatrix, projectionMatrix);
-
-            // unity_MatrixInvVP is not set by cmd.SetViewProjectionMatrices, we set it here
-            Matrix4x4 viewAndProjectionMatrix = projectionMatrix * viewMatrix;
-            Matrix4x4 inverseViewProjection = Matrix4x4.Inverse(viewAndProjectionMatrix);
-            cmd.SetGlobalMatrix(ShaderPropertyId.inverseViewAndProjectionMatrix, inverseViewProjection);
-
-            cmd.SetGlobalMatrix(ShaderPropertyId.worldToCameraMatrix, viewMatrix);
-
+            
             if (setInverseMatrices)
             {
                 Matrix4x4 inverseViewMatrix = Matrix4x4.Inverse(viewMatrix);
                 cmd.SetGlobalMatrix(ShaderPropertyId.cameraToWorldMatrix, inverseViewMatrix);
+                
+                Matrix4x4 viewAndProjectionMatrix = cameraData.GetGPUProjectionMatrix() * viewMatrix;
+                Matrix4x4 inverseViewProjection = Matrix4x4.Inverse(viewAndProjectionMatrix);
+                cmd.SetGlobalMatrix(ShaderPropertyId.inverseViewAndProjectionMatrix, inverseViewProjection);
             }
 
             // TODO: missing unity_CameraWorldClipPlanes[6], currently set by context.SetupCameraProperties
@@ -444,6 +441,29 @@ namespace UnityEngine.Rendering.Universal
         {
             m_ActiveRenderPassQueue.Add(pass);
         }
+
+        #region deprecated
+
+        [Obsolete("Use GetCameraClearFlag(ref CameraData cameraData) instead")]
+        protected static ClearFlag GetCameraClearFlag(CameraClearFlags cameraClearFlags)
+        {
+#if UNITY_EDITOR
+            // We need public API to tell if FrameDebugger is active and enabled. In that case
+            // we want to force a clear to see properly the drawcall stepping.
+            // For now, to fix FrameDebugger in Editor, we force a clear.
+            cameraClearFlags = CameraClearFlags.SolidColor;
+#endif
+            // Always clear on first render pass in mobile as it's same perf of DontCare and avoid tile clearing issues.
+            if (Application.isMobilePlatform)
+                return ClearFlag.All;
+
+            if ((cameraClearFlags == CameraClearFlags.Skybox && RenderSettings.skybox != null) ||
+                cameraClearFlags == CameraClearFlags.Nothing)
+                return ClearFlag.Depth;
+
+            return ClearFlag.All;
+        }
+        #endregion
 
         /// <summary>
         /// Returns a clear flag based on CameraClearFlags.
